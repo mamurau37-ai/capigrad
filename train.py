@@ -6,51 +6,67 @@ from nn import MLP
 model = MLP(3, [4, 4, 1])
 
 # 2. MA'LUMOTLAR TO'PLAMI (DATASET)
-# Tasavvur qilaylik, bu "Imtihon javoblari":
-# [Dars soati, Uyqu soati, O'yin soati] -> [Bahosi (1=Zo'r, -1=Yomon)]
 xs = [
     [Raqam(2.0), Raqam(3.0), Raqam(-1.0)],
     [Raqam(3.0), Raqam(-1.0), Raqam(0.5)],
     [Raqam(0.5), Raqam(1.0), Raqam(1.0)],
     [Raqam(1.0), Raqam(1.0), Raqam(-1.0)],
 ]
-# Biz kutayotgan to'g'ri javoblar (Labels)
 ys = [Raqam(1.0), Raqam(-1.0), Raqam(-1.0), Raqam(1.0)]
 
 # 3. O'QITISH HALQASI (TRAINING LOOP)
-# Modelni 20 marta dars qildirib ko'ramiz
+# Modelni 100 marta dars qildirib ko'ramiz
 for k in range(100):
     
     # A) BASHORAT (Forward Pass)
-    # Model har bir o'quvchi uchun o'z taxminini aytadi
     ypred = [model(x) for x in xs]
     
     # B) XATOLIKNI O'LCHASH (Loss Calculation)
-    # Xato = (Bashorat - Asl Javob)^2
-    # Bu "Mean Squared Error" deb ataladi
-    # Xatolarni kvadratga ko'tarib yig'amiz
-    loss = sum((yout - ygt)**2 for ygt, yout in zip(ys, ypred))    
+    loss = sum((yout - ygt)**2 for ygt, yout in zip(ys, ypred))
+    
     # C) NOLGA TUSHIRISH (Zero Grad)
-    # Oldingi darsdagi xatolarni unutamiz (aks holda ular yig'ilib qoladi)
     for p in model.parameters():
         p.grad = 0.0
     
     # D) ORQAGA QAYTISH (Backward Pass)
-    # Xato qayerdan kelganini topamiz (Gradientlarni hisoblaymiz)
     loss.backward()
     
     # E) YANGILASH (Update / Optimization)
-    # Bu eng muhim qism! Parametrlarni to'g'ri tomonga salgina suramiz.
-    learning_rate = 0.05
+    learning_rate = 0.05 # Agar natija juda sekin o'zgarsa, buni 0.1 qilib ko'rish mumkin
     for p in model.parameters():
-        # p.grad - bu xatoning oshish yo'nalishi.
-        # Biz xatoni kamaytirmoqchimiz, shuning uchun MINUS qilamiz.
         p.data += -learning_rate * p.grad
         
-    print(f"Dars {k+1}: Xatolik (Loss) = {loss.data:.4f}")
+    # Har 10 ta darsda bir natijani chiqaramiz
+    if k % 10 == 0:
+        print(f"Dars {k}: Xatolik (Loss) = {loss.data:.4f}")
 
-# 4. TEKSHIRUV
-print("\n--- O'qish tugadi! Natijalar: ---")
-for x, y in zip(xs, ys):
-    bashorat = model(x)
-    print(f"Kutilgan: {y.data}, Model aytgani: {bashorat.data:.2f}")
+print(f"Oxirgi xatolik: {loss.data:.4f}")
+
+# 4. VIZUALIZATSIYA (VISUALIZATION)
+print("\n--- CAPIGRAD MIYA XARITASI ---")
+print("Qoida: Agar model '>' deb o'ylasa '#', '<' deb o'ylasa '.' chizadi.")
+print("Bu modelning 'fikrlash chegarasi' hisoblanadi.\n")
+
+# Y o'qi (tepadan pastga qarab chizamiz)
+for y in range(20, -20, -2): 
+    satr = ""
+    # X o'qi (chapdan o'ngga)
+    for x in range(-20, 20, 1):
+        
+        # Koordinatalarni kichraytiramiz (-2.0 dan 2.0 gacha bo'ladi)
+        # Raqam klassi shu yerda ishlatilyapti, shuning uchun import eng tepada bo'lishi shart!
+        x_k = Raqam(x / 10.0)
+        y_k = Raqam(y / 10.0)
+        z_k = Raqam(-1.0) # 3-chi ma'lumotni o'zgarmas deb oldik
+        
+        # Modelga beramiz
+        inputs = [x_k, y_k, z_k]
+        natija = model(inputs)
+        
+        # Agar natija 0 dan katta bo'lsa '#', kichik bo'lsa '.'
+        if natija.data > 0:
+            satr += "#" 
+        else:
+            satr += "."
+            
+    print(satr)
