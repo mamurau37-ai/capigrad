@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -Wno-nonnull CMakeFiles/mie.dir/src/data.cpp.o CMakeFiles/mie.dir/src/nn.cpp.o CMakeFiles/mie.dir/src/features.cpp.o CMakeFiles/mie.dir/src/model.cpp.o CMakeFiles/mie.dir/src/live.cpp.o CMakeFiles/mie.dir/src/trainer.cpp.o CMakeFiles/mie.dir/src/main.cpp.o -o mie  /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so -lpthread 

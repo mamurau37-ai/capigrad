@@ -1,6 +1,0 @@
-    api_key=F9AwXwVWiNnl31TlRdgZgzV6PWneRpUEhwcS7yZAGg91cywwLpTrVyW5IStUeT59
-    api_secret=BU_YERGA_API_SECRET
-    symbol=BTCUSDT
-    leverage=5
-    testnet=true
-    paper_mode=true
