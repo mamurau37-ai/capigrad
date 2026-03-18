@@ -41,6 +41,10 @@ struct Neuron {
     double forward(const std::vector<double>& x);
     std::vector<double> backward(const std::vector<double>& x, double delta);
     void update(double lr, int t, double wd=1e-5);
+    
+    // --- MANA SHU IKKI QATOR QO'SHILADI ---
+    void save(std::ofstream& f);
+    void load(std::ifstream& f);
 };
 
 struct Layer {
@@ -51,6 +55,10 @@ struct Layer {
     std::vector<double> forward(const std::vector<double>& x);
     std::vector<double> backward(const std::vector<double>& d);
     void update(double lr, int t);
+    
+    // --- MANA SHU IKKI QATOR QO'SHILADI ---
+    void save(std::ofstream& f);
+    void load(std::ifstream& f);
 };
 
 // ── Temporal Layer (GRU) ───────────────────────────────────────

@@ -171,6 +171,26 @@ void MIEModel::backward(const std::vector<double>& feat_h1,
     m15_branch.backward(g_m15);
 }
 
+void MetaLiveModel::save(const std::string& fn) {
+    std::ofstream f(fn, std::ios::binary);
+    if (!f) {
+        std::cerr << "[ERROR] " << fn << " faylini saqlash uchun ochib bo'lmadi!\n";
+        return;
+    }
+    gru.save(f);
+    head.save(f);
+    std::cout << "[SAVE] MetaLiveModel " << fn << " ga saqlandi.\n";
+}
+
+bool MetaLiveModel::load(const std::string& fn) {
+    std::ifstream f(fn, std::ios::binary);
+    if (!f) return false;
+    gru.load(f);
+    head.load(f);
+    std::cout << "[LOAD] MetaLiveModel " << fn << " dan yuklandi.\n";
+    return true;
+}
+
 void MIEModel::update(double lr){
     t++;
     h1_branch.update(lr,t); m15_branch.update(lr,t); merge_dense.update(lr,t);

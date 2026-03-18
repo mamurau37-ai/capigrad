@@ -13,6 +13,29 @@
 std::atomic<bool> g_running{true};
 void signal_handler(int){ g_running=false; std::cout<<"\n[STOP]\n"; }
 
+// --- YANGI QO'SHILGAN QISM: LIVE O'QITISH ---
+void run_live_training() {
+    std::cout << "--- MetaLiveModel O'qitish Jarayoni Boshlandi ---\n";
+    
+    std::vector<LiveTick> live_data = load_live_log("live_log.csv");
+    if (live_data.empty()) {
+        std::cout << "[!] live_log.csv fayli topilmadi yoki bo'sh!\n";
+        return;
+    }
+
+    MetaLiveModel meta_model;
+    if (meta_model.load("meta_live_best.bin")) {
+        std::cout << "[INFO] Oldingi o'qitilgan weights yuklandi. Davom ettiramiz...\n";
+    } else {
+        std::cout << "[INFO] Yangi MetaLiveModel yaratildi.\n";
+    }
+
+    int epochs = 100;
+    double learning_rate = 1e-4; 
+    train_mie_live(meta_model, live_data, epochs, learning_rate);
+}
+// ------------------------------------------
+
 int main(int argc, char** argv) {
     std::signal(SIGINT, signal_handler);
     std::string mode = argc > 1 ? argv[1] : "--help";
@@ -47,6 +70,11 @@ int main(int argc, char** argv) {
     printf("║   Output: Regime + Trend + Momentum + Live Signal   ║\n");
     printf("╚══════════════════════════════════════════════════════╝\n");
 
+    if (mode == "--train-live") {
+        run_live_training();
+        return 0;
+    }
+
     std::vector<Candle> d1h, d15m;
     for(auto& fn:std::vector<std::string>{"btcusdt_1h_5year.csv","btcusdt_1h_365d.csv","btc_1h_1year.csv"}){
         d1h=load_csv(fn); if(!d1h.empty()){printf("[H1] %s (%zu sham)\n",fn.c_str(),d1h.size());break;}
@@ -80,7 +108,8 @@ int main(int argc, char** argv) {
     }
     else {
         printf("\nISHLATISH:\n");
-        printf("  ./mie --train                         Model o'qitish\n");
+        printf("  ./mie --train                         Model o'qitish (Makro)\n");
+        printf("  ./mie --train-live                    MetaLiveModel ni orderbook bilan o'qitish\n");
         printf("  ./mie --eval                          Tahlil sifatini o'lchash\n");
         printf("  ./mie --live                          Live signal (mock)\n");
         printf("  ./mie --live --real                   Binance WS\n");

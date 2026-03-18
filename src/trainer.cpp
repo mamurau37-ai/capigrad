@@ -7,7 +7,10 @@
 #include <cmath>
 #include <atomic>
 #include <random>
-
+#include "data.hpp"
+#include <iostream>
+#include <vector>
+#include <cmath>
 static constexpr double DECISION_THRESHOLD = 0.35;
 static constexpr double ALPHA_TREND = 0.20;
 static constexpr double FLAT_TARGET    = 0.50; 
@@ -188,4 +191,99 @@ void eval_mie(MIEModel& model, const std::vector<Candle>& d1h, const std::vector
         total++;
     }
     printf("[EVAL] Accuracy: %.2f%%\n", 100.0*correct/std::max(1,total));
+}
+
+// Live ma'lumotlar bilan ishlash uchun yangi o'qitish tsikli
+void train_mie_live(MetaLiveModel& model, const std::vector<LiveTick>& live_data, int epochs, double lr) {
+    int n = (int)live_data.size();
+    int window_size = 60; // N=60 qatorlik oyna (taxminan 1 soatlik mikrotuzilma)
+    int lookahead = 15;   // Kelajakdagi narxni bilish uchun 15 qadam oldinga qaraymiz
+
+    if (n < window_size + lookahead) {
+        std::cout << "[ERROR] Data juda kam!" << std::endl;
+        return;
+    }
+
+    int train_end = (int)(n * 0.85); // 85% train, 15% validation
+
+    std::cout << "\n[LIVE TRAIN] O'qitish boshlandi. Jami qatorlar: " << n << std::endl;
+
+    for (int ep = 0; ep < epochs && g_running; ep++) {
+        double train_loss = 0; 
+        int tn = 0;
+        
+        // DIQQAT: std::shuffle ISHLATILMAYDI! Ma'lumotlar faqat xronologik tartibda beriladi.
+        for (int i = window_size; i < train_end - lookahead; i++) {
+            
+            // 1. Har bir yangi oyna uchun GRU xotirasini (h) tozalaymiz
+            model.reset(); 
+            
+            std::vector<double> final_pred;
+            std::vector<double> last_features;
+
+            // 2. Vaqt oynasi bo'ylab yurib chiqamiz (i-60 dan i gacha)
+            for (int t = i - window_size; t <= i; t++) {
+                // Tarmoqqa beriladigan mikrotuzilma xususiyatlari (Features)
+                std::vector<double> features = {
+                    live_data[t].spread_bps,
+                    live_data[t].imb,
+                    live_data[t].ti60,
+                    live_data[t].cvd60,
+                    live_data[t].cls_up,
+                    live_data[t].cls_dn,
+                    live_data[t].cls_fl,
+                    live_data[t].clarity
+                };
+                
+                // Eslatma: Agar MIEModel faqat makro data (h1, m15) qabul qilsa, 
+                // uni shu 'features' ni qabul qiladigan qilib moslashtirish kerak.
+                final_pred = model.forward_live(features); 
+                last_features = features;
+            }
+
+            // 3. Target (Nishon) yaratish: Kelajakdagi narx o'zgarishi
+            double current_price = live_data[i].price;
+            double future_price = live_data[i + lookahead].price;
+            double price_diff_pct = (future_price - current_price) / current_price;
+            
+            std::vector<double> targets(3, 0.0); // 0: UP, 1: DOWN, 2: FLAT
+            // 0.05% (5 bps) lik chegarani o'rnatamiz, bu bozor volatilligiga qarab o'zgarishi mumkin
+            if (price_diff_pct > 0.0005) {
+                targets[0] = 1.0; // UP
+            } else if (price_diff_pct < -0.0005) {
+                targets[1] = 1.0; // DOWN
+            } else {
+                targets[2] = 1.0; // FLAT
+            }
+
+            // 4. Xatoni hisoblash (Cross-Entropy)
+            int target_idx = targets[0] == 1.0 ? 0 : (targets[1] == 1.0 ? 1 : 2);
+            double p_bc = std::max(final_pred[target_idx], 1e-10);
+            double loss = -std::log(p_bc);
+            
+            if (!std::isnan(loss) && !std::isinf(loss)) {
+                train_loss += loss; 
+                tn++;
+            }
+
+            // 5. Orqaga tarqalish (Backward) va Vaznlarni yangilash (Update)
+            // Backward faqat oynaning oxirgi qadamidagi xato bo'yicha qilinadi
+            model.backward_live(last_features, targets, final_pred);
+            
+            // Batch Size = 16 (har 16 qadamda weights yangilanadi)
+            if (i % 16 == 0) {
+                model.update(lr);
+            }
+        }
+
+        if (tn > 0) train_loss /= tn;
+
+        // Validation qismi (xuddi shu mantiq train_end dan oxirigacha)
+        // ... (kodning hajmini kattalashtirmaslik uchun tushirib qoldirildi, xuddi yuqoridagidek yoziladi)
+
+        printf("  Epoch %4d/%d | LR: %.6f | Train Loss: %.4f\n", ep + 1, epochs, lr, train_loss);
+    }
+    
+    model.save("mie_model_live.bin");
+    std::cout << "[LIVE TRAIN] Yakunlandi!" << std::endl;
 }

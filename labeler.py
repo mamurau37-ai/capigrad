@@ -5,7 +5,7 @@ import os
 LOG_FILE = "live_log.csv"
 TRAIN_FILE = "live_train_data.csv"
 FUTURE_TICKS = 60 
-THRESHOLD_PCT = 0.05 
+THRESHOLD_PCT = 0.5 
 
 def process_live_logs():
     if not os.path.exists(LOG_FILE):

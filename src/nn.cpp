@@ -192,3 +192,24 @@ void TemporalLayer::load(std::ifstream& f){
     for(auto& v:br) f.read((char*)&v,8);
     for(auto& v:bz) f.read((char*)&v,8);
 }
+void Neuron::save(std::ofstream& f) {
+    f.write((char*)&b, sizeof(b));
+    for (double weight : w) {
+        f.write((char*)&weight, sizeof(weight));
+    }
+}
+
+void Neuron::load(std::ifstream& f) {
+    f.read((char*)&b, sizeof(b));
+    for (double& weight : w) {
+        f.read((char*)&weight, sizeof(weight));
+    }
+}
+
+void Layer::save(std::ofstream& f) {
+    for (auto& n : ns) n.save(f);
+}
+
+void Layer::load(std::ifstream& f) {
+    for (auto& n : ns) n.load(f);
+}

@@ -201,7 +201,7 @@ public:
     virtual void stop()  = 0;
 };
 
-class MockFeed : public ILiveFeed { ... }; // O'chirib qo'yish mumkin, joy tejash uchun yashirdik
+
 
 class UDPFeed : public ILiveFeed {
 public:

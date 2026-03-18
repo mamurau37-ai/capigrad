@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
@@ -6,6 +7,7 @@
 #include "features.hpp"
 #include <vector>
 #include <string>
+#include <cmath>
 
 // Global class weights
 extern double g_cls_weights[3];
@@ -86,3 +88,59 @@ void print_analysis(const MIEModel::Result& r, double price, long long ts=0);
 void print_bar(const std::string& label, double val, double mn=-1, double mx=1, int w=20);
 
 #endif // MODEL_HPP
+
+// Live orderbook va Meta-labeling uchun maxsus yengil tarmoq
+struct MetaLiveModel {
+    TemporalLayer gru; // Vaqt ketma-ketligini tushunish uchun GRU (8 ta input)
+    Layer head;        // Yakuniy qaror chiqaruvchi qatlam (3 ta output: UP, DOWN, FLAT)
+
+    // 8 ta input (live_data features), 16 ta yashirin neyron, 3 ta output
+    MetaLiveModel() : gru(8, 16), head(16, 3, SIGMOID_A) {}
+
+    std::vector<double> softmax(const std::vector<double>& x) {
+        std::vector<double> res(x.size());
+        double mx = x[0], sum = 0;
+        for (double v : x) mx = std::max(mx, v);
+        for (int i = 0; i < x.size(); i++) {
+            res[i] = std::exp(x[i] - mx);
+            sum += res[i];
+        }
+        for (int i = 0; i < x.size(); i++) res[i] /= sum;
+        return res;
+    }
+
+    std::vector<double> forward_live(const std::vector<double>& features) {
+        // 1. Mikrotuzilma xususiyatlarini GRU ga beramiz
+        std::vector<double> h = gru.forward(features);
+        // 2. Olingan holatni (hidden state) yakuniy qatlamga beramiz
+        std::vector<double> logits = head.forward(h);
+        // 3. Ehtimolliklarni (0-1) qaytaramiz
+        return softmax(logits);
+    }
+
+    void backward_live(const std::vector<double>& features, 
+                       const std::vector<double>& targets, 
+                       const std::vector<double>& pred) {
+        // Cross-entropy gradienti: (pred - target)
+        std::vector<double> d_out(3);
+        for(int i = 0; i < 3; i++) {
+            d_out[i] = pred[i] - targets[i];
+        }
+        
+        // Orqaga tarqalish (Backprop)
+        std::vector<double> dh = head.backward(d_out);
+        gru.backward(dh);
+    }
+
+    void update(double lr) {
+        gru.update(lr, 1);
+        head.update(lr, 1);
+    }
+
+    void reset() {
+        gru.reset();
+    }
+
+    void save(const std::string& fn);
+    bool load(const std::string& fn);
+};
