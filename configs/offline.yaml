@@ -1,0 +1,39 @@
+data:
+  m15_csv: "data/raw/btcusd_m15_5y.csv"
+  h1_csv: "data/raw/btcusd_h1_5y.csv"
+
+output:
+  train_bin: "data/processed/train.bin"
+  val_bin: "data/processed/val.bin"
+  test_bin: "data/processed/test.bin"
+  normalizer_bin: "artifacts/normalizers/offline_norm.bin"
+
+sequence:
+  m15_len: 64
+  h1_len: 32
+
+label:
+  horizon_m15: 4
+  vol_window: 32
+  threshold_k: 0.8
+
+split:
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+features:
+  use_ret_1: true
+  use_body: true
+  use_range: true
+  use_upper_wick: true
+  use_lower_wick: true
+  use_vol_z: true
+  use_volatility_16: true
+  use_ma_gap_16: true
+
+train:
+  lr: 0.0003
+  weight_decay: 0.00001
+  epochs: 30
+  early_stop_patience: 5
